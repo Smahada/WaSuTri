@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WASUTRI — Waste, Susut & Trial</title>
+<style>
+:root{
+  --green:#166534; --green2:#22c55e; --light:#f0fdf4; --orange:#f59e0b;
+  --red:#dc2626; --text:#172033; --muted:#64748b; --border:#e2e8f0;
+  --card:#ffffff; --bg:#f8fafc;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.container{max-width:1400px;margin:auto;padding:24px}
+header{
+  background:linear-gradient(135deg,#14532d,#16a34a);color:white;border-radius:20px;
+  padding:28px 30px;margin-bottom:20px;box-shadow:0 12px 30px rgba(22,101,52,.18)
+}
+header h1{margin:0 0 6px;font-size:30px}
+header p{margin:0;opacity:.9}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 5px 18px rgba(15,23,42,.04)}
+.metric-label{font-size:13px;color:var(--muted);margin-bottom:8px}
+.metric{font-size:27px;font-weight:800}
+.green{color:var(--green)} .orange{color:#b45309} .red{color:var(--red)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+button,.file-label{
+  border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;
+  background:var(--green);color:#fff
+}
+button.secondary,.file-label.secondary{background:#e2e8f0;color:#172033}
+button.orange{background:var(--orange);color:#172033}
+button.danger{background:#fee2e2;color:#991b1b}
+.file-label input{display:none}
+.search{flex:1;min-width:220px}
+input[type=text],input[type=number],input[type=url]{
+  width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:9px;
+  outline:none;font-size:14px;background:white
+}
+input:focus{border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.12)}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:1000px;background:white}
+th,td{padding:11px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+th{background:#f1f5f9;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:inherit;z-index:1}
+td.fruit{font-weight:700}
+td.calc{font-weight:800;background:#f8fafc}
+tfoot td{font-weight:800;background:#ecfdf5}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}
+.badge.ok{background:#dcfce7;color:#166534}.badge.warn{background:#fef3c7;color:#92400e}.badge.bad{background:#fee2e2;color:#991b1b}
+.section-title{font-size:18px;font-weight:800;margin:0 0 5px}
+.section-sub{font-size:13px;color:var(--muted);margin:0 0 16px}
+.formula{
+  background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px 16px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;margin-top:12px
+}
+.settings{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+.help{font-size:12px;color:var(--muted);line-height:1.5}
+.toast{position:fixed;right:20px;bottom:20px;background:#0f172a;color:white;padding:12px 16px;border-radius:10px;display:none;z-index:10}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.container{padding:12px}header{padding:22px}.grid{grid-template-columns:1fr 1fr}header h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>WASUTRI</h1>
+  <p>Waste • Susut • Trial — kontrol stock buah berbasis kilogram</p>
+</header>
+
+<div class="grid">
+  <div class="card"><div class="metric-label">Current Stock</div><div class="metric green" id="mStock">0 kg</div></div>
+  <div class="card"><div class="metric-label">Total Waste</div><div class="metric orange" id="mWaste">0 kg</div></div>
+  <div class="card"><div class="metric-label">Total Susut + Trial</div><div class="metric orange" id="mST">0 kg</div></div>
+  <div class="card"><div class="metric-label">Stock Setelah WASUTRI</div><div class="metric green" id="mFinal">0 kg</div></div>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+  <div class="section-title">Base Data</div>
+  <p class="section-sub">Masukkan data current stock secara manual, atau import CSV dari spreadsheet.</p>
+  <div class="toolbar">
+    <input class="search" id="search" type="text" placeholder="Cari nama buah...">
+    <label class="file-label secondary">Import CSV<input id="csvFile" type="file" accept=".csv,text/csv"></label>
+    <button class="secondary" onclick="exportCSV()">Export CSV</button>
+    <button class="danger" onclick="resetData()">Reset</button>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+  <div class="section-title">Perhitungan WASUTRI</div>
+  <p class="section-sub">Rumus: <b>Current Stock − (Waste + Susut + Trial)</b></p>
+  <div class="table-wrap">
+    <table id="mainTable">
+      <thead>
+        <tr>
+          <th>Buah</th><th>Current Stock (kg)</th><th>Waste (kg)</th><th>Susut (kg)</th>
+          <th>Trial (kg)</th><th>WASUTRI (kg)</th><th>Stock After (kg)</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot><tr>
+        <td>TOTAL</td><td id="tStock">0</td><td id="tWaste">0</td><td id="tSusut">0</td>
+        <td id="tTrial">0</td><td id="tWasutri">0</td><td id="tFinal">0</td><td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">Koneksi Base Data Google Sheets</div>
+  <p class="section-sub">
+    Website ini bisa membaca Base Data melalui URL CSV yang dipublikasikan dari Google Sheets.
+    Format CSV minimal: <b>Buah, Current Stock</b>.
+  </p>
+  <div class="settings">
+    <div>
+      <input id="sheetUrl" type="url" placeholder="Tempel URL CSV Google Sheets di sini">
+      <div class="help" style="margin-top:7px">
+        Contoh format: https://docs.google.com/spreadsheets/d/ID/export?format=csv&gid=0
+      </div>
+    </div>
+    <button onclick="syncSheet()">Sync Base Data</button>
+  </div>
+  <div class="formula">WASUTRI = Waste + Susut + Trial<br>Stock After = Current Stock − WASUTRI</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const fruits = [
+  "Alpukat","Anggur","Apel","Buah Naga","Jeruk Sunkist",
+  "Mangga","Melon","Pear","Pisang","Semangka","Strawberry"
+];
+
+let rows = JSON.parse(localStorage.getItem("wasutriRows") || "null") || fruits.map(f => ({
+  fruit:f, stock:0, waste:0, susut:0, trial:0
+}));
+
+function save(){ localStorage.setItem("wasutriRows",JSON.stringify(rows)); }
+
+function num(v){ const n=parseFloat(v); return Number.isFinite(n)?n:0; }
+function fmt(n){ return num(n).toLocaleString("id-ID",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function render(){
+  const q=document.getElementById("search").value.toLowerCase();
+  const tbody=document.querySelector("#mainTable tbody");
+  tbody.innerHTML="";
+  rows.forEach((r,i)=>{
+    if(!r.fruit.toLowerCase().includes(q)) return;
+    const was=num(r.waste)+num(r.susut)+num(r.trial);
+    const final=num(r.stock)-was;
+    const status=final<0?"bad":was>0?"warn":"ok";
+    const label=final<0?"Stock minus":was>0?"Ada WASUTRI":"Normal";
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td class="fruit">${r.fruit}</td>
+      <td><input type="number" min="0" step="0.01" value="${r.stock}" onchange="edit(${i},'stock',this.value)"></td>
+      <td><input type="number" min="0" step="0.01" value="${r.waste}" onchange="edit(${i},'waste',this.value)"></td>
+      <td><input type="number" min="0" step="0.01" value="${r.susut}" onchange="edit(${i},'susut',this.value)"></td>
+      <td><input type="number" min="0" step="0.01" value="${r.trial}" onchange="edit(${i},'trial',this.value)"></td>
+      <td class="calc">${fmt(was)}</td>
+      <td class="calc">${fmt(final)}</td>
+      <td><span class="badge ${status}">${label}</span></td>`;
+    tbody.appendChild(tr);
+  });
+  updateTotals();
+}
+
+function edit(i,key,value){
+  rows[i][key]=num(value); save(); render(); toast("Data tersimpan");
+}
+
+function updateTotals(){
+  const s=rows.reduce((a,r)=>a+num(r.stock),0);
+  const w=rows.reduce((a,r)=>a+num(r.waste),0);
+  const su=rows.reduce((a,r)=>a+num(r.susut),0);
+  const t=rows.reduce((a,r)=>a+num(r.trial),0);
+  const wa=w+su+t, fin=s-wa;
+  document.getElementById("mStock").textContent=fmt(s)+" kg";
+  document.getElementById("mWaste").textContent=fmt(w)+" kg";
+  document.getElementById("mST").textContent=fmt(su+t)+" kg";
+  document.getElementById("mFinal").textContent=fmt(fin)+" kg";
+  ["tStock","tWaste","tSusut","tTrial","tWasutri","tFinal"].forEach((id,j)=>{
+    document.getElementById(id).textContent=fmt([s,w,su,t,wa,fin][j]);
+  });
+}
+
+function resetData(){
+  if(!confirm("Reset semua data WASUTRI?")) return;
+  rows=fruits.map(f=>({fruit:f,stock:0,waste:0,susut:0,trial:0}));
+  save(); render(); toast("Data direset");
+}
+
+function toast(msg){
+  const t=document.getElementById("toast"); t.textContent=msg; t.style.display="block";
+  clearTimeout(window.__toast); window.__toast=setTimeout(()=>t.style.display="none",1800);
+}
+
+document.getElementById("search").addEventListener("input",render);
+
+document.getElementById("csvFile").addEventListener("change",e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>parseCSV(reader.result);
+  reader.readAsText(file);
+});
+
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/).filter(Boolean);
+  if(lines.length<2){toast("CSV kosong");return}
+  const delim=lines[0].includes(";")?";":",";
+  const headers=lines[0].split(delim).map(x=>x.trim().toLowerCase());
+  const fruitIdx=headers.findIndex(x=>["buah","fruit","nama buah","name"].includes(x));
+  const stockIdx=headers.findIndex(x=>x.includes("current stock")||x==="stock"||x.includes("stok"));
+  if(fruitIdx<0||stockIdx<0){toast("CSV harus memiliki kolom Buah dan Current Stock");return}
+  const imported={};
+  lines.slice(1).forEach(line=>{
+    const c=line.split(delim).map(x=>x.trim().replace(/^"|"$/g,""));
+    if(c[fruitIdx]) imported[c[fruitIdx].toLowerCase()]=num(c[stockIdx]);
+  });
+  rows.forEach(r=>{
+    if(imported[r.fruit.toLowerCase()]!==undefined) r.stock=imported[r.fruit.toLowerCase()];
+  });
+  save(); render(); toast("Base Data berhasil diimport");
+}
+
+async function syncSheet(){
+  const url=document.getElementById("sheetUrl").value.trim();
+  if(!url){toast("Masukkan URL CSV Google Sheets");return}
+  try{
+    const res=await fetch(url);
+    if(!res.ok) throw new Error();
+    const text=await res.text();
+    parseCSV(text);
+    localStorage.setItem("wasutriSheetUrl",url);
+  }catch(e){
+    toast("Gagal sync. Pastikan Sheet sudah dipublish sebagai CSV.");
+  }
+}
+
+function exportCSV(){
+  const header=["Buah","Current Stock (kg)","Waste (kg)","Susut (kg)","Trial (kg)","WASUTRI (kg)","Stock After (kg)"];
+  const body=rows.map(r=>{
+    const wa=num(r.waste)+num(r.susut)+num(r.trial);
+    return [r.fruit,r.stock,r.waste,r.susut,r.trial,wa,num(r.stock)-wa];
+  });
+  const csv=[header,...body].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="wasutri_report.csv"; a.click(); URL.revokeObjectURL(a.href);
+}
+
+document.getElementById("sheetUrl").value=localStorage.getItem("wasutriSheetUrl")||"";
+render();
+</script>
+</body>
+</html>
